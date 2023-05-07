@@ -35,6 +35,9 @@ using namespace std;
 
 void processInput(GLFWwindow* window, createwindow mywindow);
 void mousefunction(double xpos, double ypos);
+
+void mousescroll(double xoffset, double yoffset);
+
 static void HelpMarker(const char* desc);
 
 
@@ -59,8 +62,8 @@ bool addallow = true;
 glm::mat4 model;
 int menu = 0;
 double scalef = 1.0f;
-glm::vec3 transvec = glm::vec3(0.0f);
-bool test = true;
+glm::vec3 transvec = glm::vec3(0,14.0,0);
+bool test = false;
 glm::vec2 getScreenPos(double x,double y)
 {
 	double px, py;
@@ -75,7 +78,7 @@ glm::vec2 getPicPos(double x, double y)
 {
 	glm::vec4 p(x, y, 0, 1.0f);
 	glm::vec4 b = glm::inverse(model) * p;
-	double px, py;
+	double px, py; 
 	px = (b.x + 6.016) / 2 / 6.016;
 	py = (b.y + 7.68) / 2 / 7.68;
 	return glm::vec2(px,py);
@@ -85,7 +88,191 @@ int startpoint;
 vector<int> despoint;
 int mod = 0;
 static bool open = false;
-//TSP
+
+vector<float> vertices;
+unsigned int VAO, VBO;
+bool hasVAO;
+class anchor
+{
+public:
+	textRender a;
+	string b;
+	float x1, y1, x2, y2;
+	float tx1, ty1, tx2, ty2;
+
+	float x;
+	float y;//在图片上的坐标
+
+	float xp;
+	float yp;//在屏幕上的坐标,单位1600,900
+
+	float vertice[18];
+	createwindow window;
+	float sc;//在屏幕上的半径
+	glm::vec3 tcolor;
+	glm::vec3 bcolor;
+	bool flag1;
+	bool flag11;
+	bool flag2;
+	bool flag3;
+	bool selected;
+	int index;
+public:
+	int selectalbe;
+	anchor(createwindow windowname, string name, float scale, float xPos, float yPos, glm::vec3 textcolor, glm::vec3 buttoncolor)
+	{
+		selectalbe = 1;
+		window = windowname;
+
+		b = name;
+
+		xp = xPos;
+		yp = yPos;
+
+		x = getPicPos((xp - 800) / 800, (yp - 450) / 450).x;
+		y = getPicPos((xp - 800) / 800, (yp - 450) / 450).y;
+
+		tcolor = textcolor;
+		bcolor = buttoncolor;
+
+		sc = scale;
+		vertice[0] = -sc; vertice[1] = -sc; vertice[2] = 0.01f;
+		vertice[3] = sc; vertice[4] = -sc; vertice[5] = 0.01f;
+		vertice[6] = sc; vertice[7] = sc; vertice[8] = 0.01f;
+		vertice[9] = -sc; vertice[10] = -sc; vertice[11] = 0.01f;
+		vertice[12] = sc; vertice[13] = sc; vertice[14] = 0.01f;
+		vertice[15] = -sc; vertice[16] = sc; vertice[17] = 0.01f;
+		flag11 = false;
+		flag2 = false;
+	}
+	anchor(createwindow windowname, int ind, float scale, float xPos, float yPos, glm::vec3 textcolor, glm::vec3 buttoncolor)
+	{
+		selectalbe = 1;
+		
+		index = ind;
+		selected = false;
+		window = windowname;
+
+
+		x = xPos;
+		y = yPos;
+
+
+
+		tcolor = textcolor;
+		bcolor = buttoncolor;
+
+		sc = scale;
+		vertice[0] = -sc; vertice[1] = -sc; vertice[2] = 0.01f;
+		vertice[3] = sc; vertice[4] = -sc; vertice[5] = 0.01f;
+		vertice[6] = sc; vertice[7] = sc; vertice[8] = 0.01f;
+		vertice[9] = -sc; vertice[10] = -sc; vertice[11] = 0.01f;
+		vertice[12] = sc; vertice[13] = sc; vertice[14] = 0.01f;
+		vertice[15] = -sc; vertice[16] = sc; vertice[17] = 0.01f;
+		flag11 = false;
+		flag2 = false;
+	}
+	void render(Shader& buttonshader)
+	{
+		if (glfwGetMouseButton(window.value(), GLFW_MOUSE_BUTTON_1) == GLFW_PRESS)
+		{
+			if (flag11)
+			{
+				flag1 = mouseposition();
+			}
+			flag11 = false;
+		}
+		else
+		{
+			if (flag1)
+			{
+				flag2 = true;
+			}
+			flag1 = false;
+		}
+		if (mouseposition() && glfwGetMouseButton(window.value(), GLFW_MOUSE_BUTTON_1) == GLFW_RELEASE)
+		{
+			flag11 = true;
+		}
+		else
+		{
+			flag11 = false;
+			flag2 = false;
+		}
+
+		glm::vec3 aaa;
+		if (flag11)
+		{
+			aaa = glm::vec3(0.4, 0.4, -0.4);
+		}
+		else if (flag1)
+		{
+			aaa = glm::vec3(0.2, 0.2, 0.2);
+		}
+		else
+		{
+			aaa = glm::vec3(0, 0, 0);
+		}
+
+		glm::vec3 bbb;
+		if (click())
+		{
+			cout << index << endl;
+			
+			selected = !selected;
+		}
+
+		if (selected)
+			bbb = glm::vec3(0.4,0.4,-0.5);
+		else
+			bbb = glm::vec3(0, 0.0, 0);
+
+		basicdraw temp(vertice, sizeof(vertice));
+		double size = 1;
+		if (selected)
+			size += 0.5;
+		xp = getScreenPos(x, y).x;
+		yp = getScreenPos(x, y).y;
+		glm::mat4 model;
+		model = glm::translate(model, glm::vec3(xp, yp, 0));
+		xp = xp * 800 + 800;
+		yp = yp * 450 + 450;
+		if (selectalbe)
+		{
+			buttonshader.use();
+			buttonshader.setVec3("ourColor", bcolor + aaa + bbb);
+			buttonshader.setMat4("model", model);
+			buttonshader.setVec2("mypos", glm::vec2(xp, yp));
+			buttonshader.setFloat("r", sc * scalef*size);
+			glEnable(GL_BLEND);
+			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+			temp.draw(buttonshader.id());
+			glDisable(GL_BLEND);
+		}
+		
+	}
+	bool mouseposition()
+	{
+		float a = window.mousex() * 1600 / window.x();
+		float b = (window.y() - window.mousey()) * 900 / window.y();
+		float c = (a - xp) * (a - xp);
+		float d = (b - yp) * (b - yp);
+		return (c + d < sc * sc * scalef * scalef);
+	}
+	bool click()
+	{
+		if (flag2)
+		{
+			flag2 = false;
+			return true;
+		}
+		return false;
+	}
+};
+vector<anchor> anchors;
+vector<anchor>::iterator anp;
+
+#pragma region 问题的理论求解
 class Floyd
 {
 private:
@@ -112,7 +299,7 @@ public:
 	int n_d;              // 目的地的数量
 	double d[maxv][maxv]; // 记录节点之间的最短距离
 	string name[maxv];    // 记录节点的名称
-	Floyd(int numN,int startp,vector<int> des)
+	Floyd(int numN, int startp, vector<int> des)
 	{
 		n = numN;
 
@@ -154,13 +341,13 @@ public:
 			d[t2][t1] = t3;
 		}
 
-			
+
 		n_d = des.size();
 		start = startp;
 		for (int i = 0; i < n_d; i++)
 		{
 			dest[i] = des[i];
-			
+
 		}
 
 		getmindis();
@@ -171,7 +358,10 @@ public:
 		int i = start;
 		while (i != end)
 		{
-			cout <<i<< "->";
+			cout << i << "->";
+			vertices.push_back(anchors[i].x);
+			vertices.push_back(anchors[i].y);
+			
 			i = path[i][end];
 		}
 	}
@@ -198,7 +388,7 @@ typedef struct
 
 OLGraph G;
 
-double up; // 上界
+double up=99; // 上界
 
 class node
 {
@@ -220,6 +410,17 @@ public:
 		{
 			vis[i] = 0;
 		}
+	}
+	void clear()
+	{
+		st = 0; ed = 0; k = 0; sumv = 0; lb = 0;
+		for (int i = 0; i < maxv; i++)
+		{
+			vis[i] = 0;
+			path[i] = 0;
+		}
+
+		
 	}
 	void add(int ed_new, double w)
 	{
@@ -397,6 +598,7 @@ int getup()
 	visit[0] = 1;
 	ans_node.add(0, 0);
 	dfs(0, 0);
+	up = ans_node.sumv;
 	return sum;
 }
 
@@ -429,6 +631,7 @@ void bfs()
 		else if (temp.lb < up)
 		{
 			ArcBox* p = G.xlist[temp.ed].firstout;
+			
 			while (p != NULL)
 			{
 				if (temp.vis[p->headvex] == 0)
@@ -443,6 +646,8 @@ void bfs()
 		}
 	}
 }
+#pragma endregion
+
 
 
 string ttostring(float f)
@@ -462,180 +667,59 @@ string ttostring(int f)
 	return s;
 }
 
-class anchor
-{
-public:
-	textRender a;
-	string b;
-	float x1, y1, x2, y2;
-	float tx1, ty1, tx2, ty2;
+float testvertices[]
+{ 
+0.5,0.5,
+-0.5,-0.5,
+0.5,-0.5,
+0,0.5,
+-0.5,0.8,
 
-	float x;
-	float y;//在图片上的坐标
-	
-	float xp;
-	float yp;//在屏幕上的坐标,单位1600,900
-
-	float vertice[18];
-	createwindow window;
-	float sc;//在屏幕上的半径
-	glm::vec3 tcolor;
-	glm::vec3 bcolor;
-	bool flag1;
-	bool flag11;
-	bool flag2;
-	bool flag3;
-	bool selected;
-	bool selectalbe;
-	int index;
-public:
-	anchor(createwindow windowname, string name, float scale, float xPos,float yPos, glm::vec3 textcolor, glm::vec3 buttoncolor)
-	{
-		selected = false;
-		window = windowname;
-
-		b = name;
-
-		xp = xPos;
-		yp = yPos;
-
-		x = getPicPos((xp - 800) / 800, (yp - 450) / 450).x;
-		y = getPicPos((xp - 800) / 800, (yp - 450) / 450).y;
-		
-		tcolor = textcolor;
-		bcolor = buttoncolor;
-
-		sc = scale;
-		vertice[0] = -sc; vertice[1] = -sc; vertice[2] = 0.01f;
-		vertice[3] = sc; vertice[4] = -sc; vertice[5] = 0.01f;
-		vertice[6] = sc; vertice[7] = sc; vertice[8] = 0.01f;
-		vertice[9] = -sc; vertice[10] = -sc; vertice[11] = 0.01f;
-		vertice[12] = sc; vertice[13] = sc; vertice[14] = 0.01f;
-		vertice[15] = -sc; vertice[16] = sc; vertice[17] = 0.01f;
-		flag11 = false;
-		flag2 = false;
-	}
-	anchor(createwindow windowname,int ind,float scale, float xPos, float yPos, glm::vec3 textcolor, glm::vec3 buttoncolor)
-	{
-		index = ind;
-		selected = false;
-		window = windowname;
-
-	
-		x = xPos;
-		y = yPos;
-
-		
-
-		tcolor = textcolor;
-		bcolor = buttoncolor;
-
-		sc = scale;
-		vertice[0] = -sc; vertice[1] = -sc; vertice[2] = 0.01f;
-		vertice[3] = sc; vertice[4] = -sc; vertice[5] = 0.01f;
-		vertice[6] = sc; vertice[7] = sc; vertice[8] = 0.01f;
-		vertice[9] = -sc; vertice[10] = -sc; vertice[11] = 0.01f;
-		vertice[12] = sc; vertice[13] = sc; vertice[14] = 0.01f;
-		vertice[15] = -sc; vertice[16] = sc; vertice[17] = 0.01f;
-		flag11 = false;
-		flag2 = false;
-	}
-	void render(Shader& buttonshader)
-	{
-		if (glfwGetMouseButton(window.value(), GLFW_MOUSE_BUTTON_1) == GLFW_PRESS)
-		{
-			if (flag11)
-			{
-				flag1 = mouseposition();
-			}
-			flag11 = false;
-		}
-		else
-		{
-			if (flag1)
-			{
-				flag2 = true;
-			}
-			flag1 = false;
-		}
-		if (mouseposition() && glfwGetMouseButton(window.value(), GLFW_MOUSE_BUTTON_1) == GLFW_RELEASE)
-		{
-			flag11 = true;
-		}
-		else
-		{
-			flag11 = false;
-			flag2 = false;
-		}
-
-		glm::vec3 aaa; 
-		if (flag11)
-		{
-			aaa = glm::vec3(0.1, 0.1, 0.1);
-		}
-		else if (flag1)
-		{
-			aaa = glm::vec3(0.05, 0.05, 0.05);
-		}
-		else
-		{
-			aaa = glm::vec3(0, 0, 0);
-		}
-		
-		glm::vec3 bbb;
-		if (click())
-		{
-			cout << index << endl;
-			selected = !selected;
-		}
-			
-		if (selected)
-			bbb = glm::vec3(0.2, 0.4, 0);
-		else
-			bbb = glm::vec3(0,-0.1,0);
-
-		basicdraw temp(vertice, sizeof(vertice));
-		xp = getScreenPos(x, y).x;
-		yp = getScreenPos(x, y).y;
-		glm::mat4 model;
-		model = glm::translate(model, glm::vec3(xp, yp, 0));
-		xp = xp * 800 + 800;
-		yp = yp * 450 + 450;
-		buttonshader.use();
-		buttonshader.setVec3("ourColor", bcolor + aaa + bbb);
-		buttonshader.setMat4("model", model);
-		buttonshader.setVec2("mypos", glm::vec2(xp, yp));
-		buttonshader.setFloat("r", sc*scalef);
-		glEnable(GL_BLEND);
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-		temp.draw(buttonshader.id());
-		glDisable(GL_BLEND);
-	}
-	bool mouseposition()
-	{
-		float a = window.mousex() * 1600 / window.x();
-		float b = (window.y() - window.mousey()) * 900 / window.y();
-		float c = (a - xp) * (a - xp);
-		float d = (b - yp) * (b - yp);
-		return (c+d<sc*sc*scalef*scalef);
-	}
-	bool click()
-	{
-		if (flag2)
-		{
-			flag2 = false;
-			return true;
-		}
-		return false;
-	}
 };
 
-vector<anchor> anchors;
-vector<anchor>::iterator anp;
+
+void showans()
+{	
+	glGenBuffers(1, &VBO);
+	glGenVertexArrays(1, &VAO);
+	glBindVertexArray(VAO);
+	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	glBufferData(GL_ARRAY_BUFFER, vertices.size()* sizeof(float), &(vertices[0]), GL_STATIC_DRAW);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), 0);
+	glBindVertexArray(0);
+	hasVAO = true;
+}
+float mytime,mytime2,mytime3;
+bool showmove;
+double showx=0.5, showy=0.5;
+string UTF8ToGB(const char* str)
+{
+	std::string result;
+	WCHAR* strSrc;
+	LPSTR szRes;
+
+	//获得临时变量的大小
+	int i = MultiByteToWideChar(CP_UTF8, 0, str, -1, NULL, 0);
+	strSrc = new WCHAR[i + 1];
+	MultiByteToWideChar(CP_UTF8, 0, str, -1, strSrc, i);
+
+	//获得临时变量的大小
+	i = WideCharToMultiByte(CP_ACP, 0, strSrc, -1, NULL, 0, NULL, NULL);
+	szRes = new CHAR[i + 1];
+	WideCharToMultiByte(CP_ACP, 0, strSrc, -1, szRes, i, NULL, NULL);
+
+	result = szRes;
+	delete[]strSrc;
+	delete[]szRes;
+
+	return result;
+}
 
 int main()
 {
 	createwindow pwindow(1600, 900, "Map");
+	
 	//加载IMGUI
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
@@ -661,13 +745,14 @@ int main()
 	Shader buttonshader("myfile/button.vs", "myfile/button.fs");//按钮着色器
 	Shader onetexture3d("myfile/onetexture.vs", "myfile/onetexture.fs");
 	Shader anchorshader("myfile/anchor.vs","myfile/anchor.fs");
+	Shader lineshader("myfile/line.vs", "myfile/line.fs","myfile/line.gs");
 
 	//按钮
-	button back(pwindow, "BACK", 0.5, 1452, 10, 1585, 56, glm::vec3(1.0f, 0, 0), glm::vec3(0.3, 0.9, 0.3));
-	button start(pwindow, "START", 1.0, 640, 500 - 175, 961, 576 - 175, glm::vec3(0.6, 1, 0.6), glm::vec3(0.8, 0.6, 0.8));
-	button navigate(pwindow, "Navigate", 0.5, 1200, 10, 1400, 56, glm::vec3(0.6, 1, 0.6), glm::vec3(0.8, 0.6, 0.8));
+	button back(pwindow, "BACK", 0.5, 1452, 10, 1585, 56, glm::vec3(0,0.4,0.8), glm::vec3(0.3, 0.9, 0.3));
+	button start(pwindow, "START", 1.0, 640, 500 - 175, 961, 576 - 175, glm::vec3(0.6, 1, 0.6), glm::vec3(0,0.6, 0.8));
+	button navigate(pwindow, "Navigate", 0.5, 1200, 10, 1400, 56, glm::vec3(0.6, 1, 0.6), glm::vec3(0.2,0.8,1));
 	//锚点
-	anchor testanchor(pwindow,"test",50,1200,450, glm::vec3(0,204.0/255,1.0), glm::vec3(0, 204.0 / 255, 1.0));
+	anchor testanchor(pwindow,"test",50,1200,450, glm::vec3(0,204.0/255,1.0), glm::vec3(0, 0.4,0.8));
 	char testtext[100];
 	
 	//图片
@@ -681,25 +766,61 @@ int main()
 		cout << "Failed to open the file." << endl;
 		exit(0);
 	}
+	
+	
 	int count = 0;
 	while (!f2.eof())
 	{
 		string s;
 		getline(f2, s);
+		s = UTF8ToGB(s.c_str());
 		if (s.size() < 3)
 			break;
-		int p1 = s.find(' ');
-		string s1 = s.substr(0,p1);
-		string s2 = s.substr(p1 + 1, s.size() - p1-1);
-		stringstream ss1;
-		stringstream ss2;
-
-		ss1 << s1; ss2 << s2;
-		float d1, d2;
-		ss1 >> d1; ss2 >> d2;
+		int p1 = s.find(','); int p2 = s.find('-'); int p3 = s.find('*');
 		
-		anchor temp(pwindow,count++,50,d1,d2, glm::vec3(0, 204.0 / 255, 1.0), glm::vec3(0, 204.0 / 255, 1.0));
-		anchors.push_back(temp);
+		if (p3 == -1)
+		{
+			string s1 = s.substr(0, p1);
+			string s2 = s.substr(p1 + 1, p2);
+			string s3 = s.substr(s.length() - 1, 1);
+			stringstream ss1;
+			stringstream ss2;
+			stringstream ss3;
+			ss1 << s1; ss2 << s2;
+			float d1, d2;
+			ss1 >> d1; ss2 >> d2;
+			ss3 << s3;
+			int d3;
+			ss3 >> d3;
+
+			anchor temp(pwindow, count++, 60, d1, d2, glm::vec3(0, 204.0 / 255, 1.0), glm::vec3(0, 0.4, 0.8));
+			temp.selectalbe = d3;
+			anchors.push_back(temp);
+		}
+		else
+		{
+			int p4 = s.find('+');
+			string name = s.substr(p3+1, p4 - p3-1);
+
+			string s1 = s.substr(0, p1);
+			string s2 = s.substr(p1 + 1, p2);
+			string s3 = s.substr(p2+1,1);
+			stringstream ss1;
+			stringstream ss2;
+			stringstream ss3;
+			ss1 << s1; ss2 << s2;
+			float d1, d2;
+			ss1 >> d1; ss2 >> d2;
+			ss3 << s3;
+			int d3;
+			ss3 >> d3;
+			anchor temp(pwindow, count++, 60, d1, d2, glm::vec3(0, 204.0 / 255, 1.0), glm::vec3(0, 0.4, 0.8));
+			temp.selectalbe = d3;
+			temp.b = name;
+			
+			anchors.push_back(temp);
+		}
+		
 		
 	}
 	N = count;
@@ -737,15 +858,33 @@ int main()
 	glm::mat4 view, projection;
 	projection = glm::perspective(glm::radians(45.0f), pwindow.x() / pwindow.y(), 0.1f, 100.0f);
 	glEnable(GL_BLEND);
-
+	
+	
 
 	while (!glfwWindowShouldClose(pwindow.value()))
 	{
+		glLineWidth(50 * scalef);
 		mousehide =false;
 		moveflag = true;
 		processInput(pwindow.value(),pwindow);
 		mousefunction(pwindow.mousex(), pwindow.mousey());
-
+		mousescroll(0.0,pwindow.mousescroll());
+		mytime++; mytime2++;
+		if (!showmove)
+		{
+			mytime3 = 0;
+			if (mytime > 100000)
+				mytime = 0;
+			if (mytime2 > 100000)
+				mytime2 = 0;
+		}
+		else
+		{
+			mytime = 0;
+			mytime2 = 0;
+			mytime3++;
+		}
+		
 		if (menu == 0)
 		{
 			glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
@@ -754,9 +893,16 @@ int main()
 			deltaTime = currentFrame - lastFrame;
 			lastFrame = currentFrame;
 
+			
+
 			start.render(textshader, buttonshader);
 			if (start.click())
+			{
+				mytime = 0;
+				mytime2 = 0;
 				menu = 1;
+			}
+				
 			if (test)
 			{
 				sprintf_s(testtext, "(%.2f,%.2f),pos:(%.2f,%.2f,%.2f),Front:(%.2f,%.2f,%.2f),Up:(%.2f,%.2f,%.2f),", pwindow.mousex(), 900 - pwindow.mousey(), cameraPos.x, cameraPos.y, cameraPos.z, cameraFront.x, cameraFront.y, cameraFront.z, cameraUp.x, cameraUp.y, cameraUp.z);
@@ -777,14 +923,10 @@ int main()
 			cameraFront = glm::normalize(glm::vec3(0,-0.99,0.001));
 
 			model = glm::mat4(1.0f);
-			model = glm::translate(model, transvec);
-			model = glm::scale(model, glm::vec3(0.9f*scalef, 1.6f*scalef, scalef));
 			
-			onetexture3d.use();
-			glBindTexture(GL_TEXTURE_2D, mappicture.id);
-			onetexture3d.setMat4("model", model);
-			glBindVertexArray(mapVAO);
-			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+			model = glm::scale(model, glm::vec3(0.9f*scalef, 1.6f*scalef, scalef));
+			model = glm::translate(model, transvec);
+			
 			
 			double left, right, up, down;
 			left = getScreenPos(0, 0).x;
@@ -792,32 +934,91 @@ int main()
 			up = getScreenPos(1, 1).y;
 			down = getScreenPos(0,0).y;
 
-			if (right - left < 2)
-				transvec.x = 0;
-			else
+			if (!showmove)
 			{
-				if (left > -1.0f)
-					transvec.x = transvec.x - (left+1.0f);
-				if (right < 1.0f)
-					transvec.x = transvec.x + (1.0f-right);
+				if (right - left < 2)
+				{
+					if (fabs(transvec.x) < 0.001)
+						mytime = 0;
+					transvec.x = transvec.x - transvec.x * (1 - pow(1.01, -mytime / 100.0));
+				}
+				else
+				{
+					if (left > -1.0f)
+					{
+						transvec.x = transvec.x - (left + 1.0f) * (1 - pow(1.01, -mytime / 100.0));
+					}
+
+					else if (right < 1.0f)
+					{
+
+						transvec.x = transvec.x + (1.0f - right) * (1 - pow(1.01, -mytime / 100.0));
+					}
+					if (left < -0.999 && right>0.999)
+						mytime = 0;
+
+				}
+				if (up - down > 2)
+				{
+					if (up < 1.0)
+						transvec.y = transvec.y + (1.0 - up) * (1 - pow(1.01, -mytime2 / 100.0));
+					if (down > -1.0)
+						transvec.y = transvec.y - (down + 1.0) * (1 - pow(1.01, -mytime2 / 100.0));
+					if (up > 0.999 && down < -0.999)
+						mytime2 = 0;
+
+				}
+				else
+				{
+					if (fabs(transvec.y) < 0.001)
+						mytime2 = 0;
+
+					transvec.y = transvec.y - transvec.y * (1 - pow(1.01, -mytime2 / 100.0));
+					
+				}
 			}
-			if (up - down > 2)
+
+			if (showmove)
 			{
-				if (up < 1.0)
-					transvec.y = transvec.y + 1.0 - up;
-				if (down > -1.0)
-					transvec.y = transvec.y - (down + 1.0);
-			}
-			else
-			{
-				transvec.y = 0;
+				glm::vec2 temp = getPicPos(0, 0);
+				transvec.x = transvec.x-(showx-temp.x)*(1 - pow(1.21, -mytime3 / 100.0));
+				transvec.y = transvec.y - (showy - temp.y) * (1 - pow(1.21, -mytime3 / 100.0));
+				pwindow.yset += (0.4-pwindow.yset)*0.1* (1 - pow(1.11, -mytime3 / 100.0));
+				if (fabs(temp.x - showx) < 0.001 && fabs(temp.y - showy) < 0.001)
+				{
+					mytime3 = 0;
+					showmove = false;
+				}
 			}
 			
+			
+			onetexture3d.use();
+			glBindTexture(GL_TEXTURE_2D, mappicture.id);
+			onetexture3d.setMat4("model", model);
+			glBindVertexArray(mapVAO);
+			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+			if (hasVAO)
+			{
+
+				glEnable(GL_BLEND);
+				glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+				float timeValue = glfwGetTime();
+				timeValue = timeValue / vertices.size() * 5;
+				timeValue = timeValue - (int)timeValue;
+				lineshader.use();
+				lineshader.setFloat("time1", timeValue);
+				lineshader.setMat4("model", model);
+				lineshader.setFloat("sc", scalef);
+				lineshader.setInt("mysum", vertices.size() / 2);
+				glBindVertexArray(VAO);
+				glDrawArrays(GL_LINE_STRIP, 0, vertices.size() / 2);
+			}
+
 			for (anp = anchors.begin(); anp != anchors.end(); anp++)
 			{
 				anp->render(anchorshader);
 			}
-
+			
 			//IMGUI
 			ImGui_ImplOpenGL3_NewFrame();
 			ImGui_ImplGlfw_NewFrame();
@@ -834,11 +1035,21 @@ int main()
 				if (ImGui::Button(u8"开始设置1"))
 				{
 					cout << "开始设置起点:" << endl;
+					
+					for (anp = anchors.begin(); anp != anchors.end(); anp++)
+					{
+						if (anp->selected && anp->selectalbe)
+						{
+							startpoint = anp->index;
+							anp->bcolor = glm::vec3(1, 0.1, 0.1);
+							cout << "起点为:" << startpoint << endl;
+						}
+					}
 					for (anp = anchors.begin(); anp != anchors.end(); anp++)
 					{
 						anp->selected = false;
+
 					}
-					mod = 1;
 				}
 				
 				ImGui::Text(u8"设置目的地");
@@ -846,47 +1057,86 @@ int main()
 				if (ImGui::Button(u8"开始设置2"))
 				{
 					cout << "开始设置目的地" << endl;
+					
+					for (anp = anchors.begin(); anp != anchors.end(); anp++)
+					{
+						if (anp->selected&&anp->selectalbe)
+						{
+							despoint.push_back(anp->index);
+							anp->bcolor = glm::vec3(0.8, 0.8, 0.0);
+						}
+
+					}
 					for (anp = anchors.begin(); anp != anchors.end(); anp++)
 					{
 						anp->selected = false;
 					}
-					mod = 2;
+					cout << "目的地设置完毕" << endl;
+
 				}
-				if (ImGui::Button(u8"完成"))
+				static char buf[32] = "";
+				ImGui::InputText(u8"输入名字", buf, IM_ARRAYSIZE(buf));
+				ImGui::SameLine();
+				if (ImGui::Button(u8"搜索"))
 				{
-					if (mod == 1)
+					string s = UTF8ToGB(buf);
+					for (anp = anchors.begin(); anp != anchors.end(); anp++)
 					{
-						for (anp = anchors.begin(); anp != anchors.end(); anp++)
+						int ptemp = -1;
+						if (anp->b.find(s) != -1)
 						{
-							if (anp->selected)
-							{
-								startpoint = anp->index;
-								cout << "起点为:" << startpoint << endl;
-							}
+							showx = anp->x;
+							showy = anp->y;
+							if(anp->selectalbe)
+								anp->selected = true;
+							showmove = true;
+							break;
 						}
 					}
-					if (mod == 2)
-					{
-						for (anp = anchors.begin(); anp != anchors.end(); anp++)
-						{
-							if (anp->selected)
-							{
-								despoint.push_back(anp->index);
-							}
-							
-						}
-						cout << "目的地设置完毕" << endl;
-					}
+					
+
+				}
+				if (ImGui::Button(u8"清空"))
+				{
+					up = 99;
 					for (anp = anchors.begin(); anp != anchors.end(); anp++)
 					{
 						anp->selected = false;
+						anp->bcolor = glm::vec3(0, 0.4, 0.8);
 					}
+					hasVAO = false;
+					glDeleteVertexArrays(1, &VAO);
+					glDeleteBuffers(1, &VBO);
+					vertices.clear();
+					despoint.clear();
+					ans_node.clear();
+					for (int i = 0; i < maxv; i++)
+						visit[i] = 0;
+					ArcBox* p5, * q;
+					for (int i = 0; i < G.vexnum; i++)
+					{
+						p5 = G.xlist[i].firstout;
+						while (p5 != NULL)
+						{
+							q = p5;
+							p5 = p5->tlink;
+							delete[]q;
+						}
+					}
+					for (int i = 0; i < G.vexnum; i++)
+					{
+					G.xlist[i].firstout=NULL;
+					G.xlist[i].firstin = NULL;
+					}
+					//cout << "清空完毕" << endl;
 				}
+				ImGui::SameLine();
 				if (ImGui::Button(u8"开始规划"))
 				{
 					Floyd f(N,startpoint,despoint);
 					creatG(f);
 					getup(); // 求上界
+					
 					node start;
 					start.add(0, 0);
 					q.push(start);
@@ -900,6 +1150,9 @@ int main()
 						pre = a;
 					}
 					cout << f.start<< endl;
+					vertices.push_back(anchors[f.start].x);
+					vertices.push_back(anchors[f.start].y);
+					showans();
 					cout << ans_node.sumv << endl;
 				}
 				ImGui::End();
@@ -933,18 +1186,13 @@ int main()
 
 bool addflag = false;
 bool printflag = false;
+bool posflag;
 string stemp;
+bool mapmove = false;
 void processInput(GLFWwindow* window,createwindow mywindow)
 {
-	if (glfwGetKey(window, GLFW_KEY_LEFT_ALT) == GLFW_RELEASE && mousehide)
-		glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-	else
-	{
-		glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-		firstMouse = true;
-	}
 
-	float cameraSpeed = 2.0f * deltaTime;
+	float cameraSpeed = 4.0f * deltaTime;
 	if (moveflag)
 	{
 		if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
@@ -963,8 +1211,16 @@ void processInput(GLFWwindow* window,createwindow mywindow)
 
 	if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1) == GLFW_PRESS)
 	{
+		mapmove = true;
+		
 		//addflag = true;
 	}
+	else
+	{
+		firstMouse = true;
+		mapmove = false;
+	}
+		
 	if (menu == 0)
 		addflag = false;
 	if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1) == GLFW_RELEASE)
@@ -976,6 +1232,20 @@ void processInput(GLFWwindow* window,createwindow mywindow)
 			addflag = false;
 		}
 	}
+	if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_2) == GLFW_PRESS)
+	{
+		posflag = true;
+	}
+	if (posflag&&glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_2) == GLFW_RELEASE)
+	{
+		
+		float a = mywindow.mousex();
+		float b = 900 - mywindow.mousey();
+		glm::vec2 temp = getPicPos((a - 800) / 800, (b - 450) / 450);
+		cout << temp.x << "," << temp.y << endl;
+		posflag = false;
+	}
+		
 
 	if (glfwGetKey(window, GLFW_KEY_P) == GLFW_PRESS)
 	{
@@ -1007,12 +1277,10 @@ void processInput(GLFWwindow* window,createwindow mywindow)
 						ib = anp->index;
 						num = 0;
 					}
-					anp->selected = false;
 				}
 			}
-			stemp = stemp + ttostring(ia) + "-" + ttostring(ib) + ":" + ttostring(sqrt((a1 - b1) * (a1 - b1) + (a2 - b2) * (a2 - b2)));
-			cout << stemp << endl;
-			stemp = "";
+			cout << ia << "-" << ib << ":" << sqrt((a1-b1)*(a1-b1)+(a2-b2)*(a2-b2)) << endl;
+			
 			printflag = false;
 		}
 	}
@@ -1020,40 +1288,38 @@ void processInput(GLFWwindow* window,createwindow mywindow)
 }
 void mousefunction(double xpos, double ypos)
 {
-
-	if (mousehide)
+	
+	if (firstMouse)
 	{
-		if (firstMouse)
-		{
-			lastX = xpos;
-			lastY = ypos;
-			firstMouse = false;
-		}
-
-		float xoffset = xpos - lastX;
-		float yoffset = lastY - ypos;
+		
 		lastX = xpos;
 		lastY = ypos;
+		firstMouse = false;
+	}
+	if (mapmove)
+	{
+		float xoffset = xpos - lastX;
+		float yoffset = lastY-ypos;
 
-		float sensitivity = 0.05;
-		xoffset *= sensitivity;
-		yoffset *= sensitivity;
+		lastX = xpos;
+		lastY = ypos;
+		double a; double b;
+		a=(getPicPos(1.0, 0).x - getPicPos(0, 0).x)/800;
+		b = (getPicPos(0, 1).y - getPicPos(0, 0).y) / 450;
+		transvec.x += xoffset*6.016*a*2;
+		transvec.y += yoffset*7.68*b*2;
 
-		yaw += xoffset;
-		pitch += yoffset;
-
-		if (pitch > 89.0f)
-			pitch = 89.0f;
-		if (pitch < -89.0f)
-			pitch = -89.0f;
-
-		glm::vec3 front;
-		front.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
-		front.y = sin(glm::radians(pitch));
-		front.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
-		cameraFront = glm::normalize(front);
 	}
 
+
+
+	
+}
+static double lastsco=0;
+void mousescroll(double xoffset, double yoffset)
+{	
+	scalef = yoffset;
+	
 }
 static void HelpMarker(const char* desc)
 {

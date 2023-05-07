@@ -7,3 +7,5 @@ int createwindow::yy = 0;
 
 float createwindow ::xpos=0.0f;
 float createwindow ::ypos=0.0f;
+
+float createwindow::yset = 0.0804897f;
