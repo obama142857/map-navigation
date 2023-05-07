@@ -26,6 +26,8 @@ protected:
     static int xx, yy;
     static float xpos;
     static float ypos;
+    static float yset;
+
     bool mouseable;
     string na;
 public:
@@ -70,6 +72,7 @@ public:
         glfwMakeContextCurrent(window);
         glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
         glfwSetCursorPosCallback(window, mouse_callback);
+        glfwSetScrollCallback(window, scroll_callback);
         
 
         if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
@@ -83,14 +86,27 @@ public:
         xpos = static_cast<float>(xposIn);
         ypos = static_cast<float>(yposIn);
     }
+    static void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+    {
+        yset += static_cast<float>(yoffset)*0.1*yset;
+        
+    }
 
     float mousex()
     {
         return xpos;
     }
+    void setmydata(float* ff)
+    {
+       
+    }
     float mousey()
     {
         return ypos;
+    }
+    float mousescroll()
+    {
+        return yset;
     }
 
     void processInput()
@@ -133,61 +149,126 @@ class Shader
 {
 private:
     unsigned int shaderProgram;
-   string vertexCode;
-   string fragmentCode;
-   fstream f1;
-   fstream f2;
-   const char* vertexShaderSource;
-   const char* fragmentShaderSource;
-   void buildshader()
-   {
-       // build and compile our shader program
+    string vertexCode;
+    string fragmentCode;
+    string geometryCode;
+    fstream f1;
+    fstream f2;
+    fstream f3;
+    string name;
+    const char* vertexShaderSource;
+    const char* fragmentShaderSource;
+    const char* geometryShaderSource;
+    void buildshader()
+    {
+        // build and compile our shader program
+    // ------------------------------------
+    // vertex shader
+        unsigned int vertexShader = glCreateShader(GL_VERTEX_SHADER);
+        glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
+        glCompileShader(vertexShader);
+        // check for shader compile errors
+        int success;
+        char infoLog[512];
+        glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
+        if (!success)
+        {
+            glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
+            std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
+            std::cout << name << endl;
+        }
+        // fragment shader
+        unsigned int fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+        glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
+        glCompileShader(fragmentShader);
+        // check for shader compile errors
+        glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
+        if (!success)
+        {
+            glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
+            std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
+            std::cout << name << endl;
+        }
+        // link shaders
+        shaderProgram = glCreateProgram();
+        glAttachShader(shaderProgram, vertexShader);
+        glAttachShader(shaderProgram, fragmentShader);
+        glLinkProgram(shaderProgram);
+        // check for linking errors
+        glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
+        if (!success) {
+            glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
+            std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
+            std::cout << name << endl;
+        }
+        glDeleteShader(vertexShader);
+        glDeleteShader(fragmentShader);
+    }
+    void buildshader2()
+    {
+        // build and compile our shader program
    // ------------------------------------
    // vertex shader
-       unsigned int vertexShader = glCreateShader(GL_VERTEX_SHADER);
-       glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
-       glCompileShader(vertexShader);
-       // check for shader compile errors
-       int success;
-       char infoLog[512];
-       glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
-       if (!success)
-       {
-           glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
-           std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
-       }
-       // fragment shader
-       unsigned int fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-       glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
-       glCompileShader(fragmentShader);
-       // check for shader compile errors
-       glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
-       if (!success)
-       {
-           glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
-           std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
-       }
-       // link shaders
-       shaderProgram = glCreateProgram();
-       glAttachShader(shaderProgram, vertexShader);
-       glAttachShader(shaderProgram, fragmentShader);
-       glLinkProgram(shaderProgram);
-       // check for linking errors
-       glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
-       if (!success) {
-           glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
-           std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
-       }
-       glDeleteShader(vertexShader);
-       glDeleteShader(fragmentShader);
-   }
+        unsigned int vertexShader = glCreateShader(GL_VERTEX_SHADER);
+        glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
+        glCompileShader(vertexShader);
+        // check for shader compile errors
+        int success;
+        char infoLog[512];
+        glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
+        if (!success)
+        {
+            glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
+            std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
+            std::cout << name << endl;
+        }
+        // fragment shader
+        unsigned int fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+        glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
+        glCompileShader(fragmentShader);
+        // check for shader compile errors
+        glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
+        if (!success)
+        {
+            glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
+            std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
+            std::cout << name << endl;
+        }
+        // geometry shader
+        unsigned int geometryShader = glCreateShader(GL_GEOMETRY_SHADER);
+        glShaderSource(geometryShader, 1, &geometryShaderSource, NULL);
+        glCompileShader(geometryShader);
+        glGetShaderiv(geometryShader, GL_COMPILE_STATUS, &success);
+        if (!success)
+        {
+            glGetShaderInfoLog(geometryShader, 512, NULL, infoLog);
+            std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
+            std::cout << name << endl;
+        }
+        // link shaders
+        shaderProgram = glCreateProgram();
+        glAttachShader(shaderProgram, vertexShader);
+        glAttachShader(shaderProgram, fragmentShader);
+        glAttachShader(shaderProgram, geometryShader);
+        glLinkProgram(shaderProgram);
+        // check for linking errors
+        glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
+        if (!success) {
+            glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
+            std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
+            std::cout << name << endl;
+        }
+        glDeleteShader(vertexShader);
+        glDeleteShader(fragmentShader);
+    }
 public:
-    Shader(string vf,string ff)
+    Shader(string vf, string ff)
     {
+        name = vf;
         f1.open(vf, ios::in | ios::out | ios::binary);
         if (!f1)
         {
-            cout << "Failed vertexCode Open!" <<vf<< endl;
+            cout << "Failed vertexCode Open!" << vf << endl;
             exit(0);
         }
 
@@ -204,22 +285,22 @@ public:
         unsigned int pos1, pos2;
         pos1 = temp.find("#version");
         pos2 = temp.rfind("}");
-        
-        vertexCode = temp.substr(pos1,pos2-pos1+1);
-        
+
+        vertexCode = temp.substr(pos1, pos2 - pos1 + 1);
+
 
 
         f2.open(ff, ios::in | ios::out | ios::binary);
         if (!f2)
         {
-            cout << "Failed fragmentCode Open!" <<ff<< endl;
+            cout << "Failed fragmentCode Open!" << ff << endl;
             exit(0);
         }
 
 
         f2.seekg(0, ios::end);
         unsigned int lenf = f2.tellg();
-        
+
         temp.resize(lenf);
         f2.seekg(0, ios::beg);
         f2.read((char*)temp.c_str(), lenf);
@@ -229,12 +310,73 @@ public:
 
         fragmentCode = temp.substr(pos1, pos2 - pos1 + 1);
 
-        
+
 
         vertexShaderSource = vertexCode.c_str();
-        
+
         fragmentShaderSource = fragmentCode.c_str();
         buildshader();
+    }
+    Shader(string vf, string ff, string gf)
+    {
+        name = vf;
+        f1.open(vf, ios::in | ios::out | ios::binary);
+        if (!f1)
+        {
+            cout << "Failed vertexCode Open!" << vf << endl;
+            exit(0);
+        }
+
+        f1.seekg(0, ios::end);
+        unsigned int lenv = f1.tellg();
+        string temp;
+        temp.resize(lenv);
+        f1.seekg(0, ios::beg);
+        f1.read((char*)temp.c_str(), lenv);
+
+        unsigned int pos1, pos2;
+        pos1 = temp.find("#version");
+        pos2 = temp.rfind("}");
+
+        vertexCode = temp.substr(pos1, pos2 - pos1 + 1);
+
+
+
+        f2.open(ff, ios::in | ios::out | ios::binary);
+        if (!f2)
+        {
+            cout << "Failed fragmentCode Open!" << ff << endl;
+            exit(0);
+        }
+        f2.seekg(0, ios::end);
+        unsigned int lenf = f2.tellg();
+        temp.resize(lenf);
+        f2.seekg(0, ios::beg);
+        f2.read((char*)temp.c_str(), lenf);
+        pos1 = temp.find("#version");
+        pos2 = temp.rfind("}");
+        fragmentCode = temp.substr(pos1, pos2 - pos1 + 1);
+
+        f3.open(gf, ios::in | ios::out | ios::binary);
+        if (!f3)
+        {
+            cout << "Failed fragmentCode Open!" << gf << endl;
+            exit(0);
+        }
+        f3.seekg(0, ios::end);
+        unsigned int leng = f3.tellg();
+        temp.resize(leng);
+        f3.seekg(0, ios::beg);
+        f3.read((char*)temp.c_str(), leng);
+        pos1 = temp.find("#version");
+        pos2 = temp.rfind("}");
+        geometryCode = temp.substr(pos1, pos2 - pos1 + 1);
+
+
+        vertexShaderSource = vertexCode.c_str();
+        fragmentShaderSource = fragmentCode.c_str();
+        geometryShaderSource = geometryCode.c_str();
+        buildshader2();
     }
     void use()
     {
@@ -254,13 +396,13 @@ public:
     }
     void setVec4(const std::string& name, glm::vec4 value)
     {
-        glUniform4f(glGetUniformLocation(shaderProgram,name.c_str()),value.x,value.y,value.z,value.w);
+        glUniform4f(glGetUniformLocation(shaderProgram, name.c_str()), value.x, value.y, value.z, value.w);
     }
     void setVec3(const std::string& name, glm::vec3 value)
     {
         glUniform3f(glGetUniformLocation(shaderProgram, name.c_str()), value.x, value.y, value.z);
     }
-    void setVec2(const std::string& name,glm::vec2 value)
+    void setVec2(const std::string& name, glm::vec2 value)
     {
         glUniform2f(glGetUniformLocation(shaderProgram, name.c_str()), value.x, value.y);
     }
@@ -272,7 +414,7 @@ public:
     {
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, name.c_str()), 1, GL_FALSE, &mat[0][0]);
     }
-   
+
     unsigned int id()
     {
         return shaderProgram;
