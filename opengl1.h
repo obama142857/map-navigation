@@ -1184,7 +1184,7 @@ public:
         glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
         glUseProgram(shaderProgram);
         glUniform2f(glGetUniformLocation(shaderProgram, "mypoint"), x,y);
-        glUniform3f(glGetUniformLocation(shaderProgram, "pcolor"), 0.8, 0.4, 0.8);
+        glUniform3f(glGetUniformLocation(shaderProgram, "pcolor"), 1,0,0);
         glBindVertexArray(VAO);
         glDrawArrays(GL_TRIANGLES, 0, 6);
         glBindFramebuffer(GL_FRAMEBUFFER, 0);

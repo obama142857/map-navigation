@@ -25,7 +25,7 @@ void main() {
     float ss = gs_in[0].scale;
     gl_Position = gl_in[0].gl_Position+vec4(pingyi*0.05*ss,0.0);
     
-    vec3 color1 = vec3(0.4,1,0.4);
+    vec3 color1 = vec3(1,1,0);
     vec3 color2 = vec3(0, 0.8, 1.0);
     
     if(((a-1)/s<t)&&((a+1)/s>t))
