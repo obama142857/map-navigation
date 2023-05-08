@@ -650,6 +650,7 @@ void bfs()
 
 
 
+
 string ttostring(float f)
 {
 	string s;
