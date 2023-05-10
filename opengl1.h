@@ -965,7 +965,7 @@ public:
             "uniform vec3 pcolor;                                                                      \n"
             "void main()                                                                               \n"
             "{                                                                                         \n"
-            "    if (((mypos.x - mypoint.x)*(mypos.x - mypoint.x)+(mypos.y - mypoint.y)*(mypos.y - mypoint.y)) < 0.0001)       \n"
+            "    if (((mypos.x - mypoint.x)*(mypos.x - mypoint.x)+(mypos.y - mypoint.y)*(mypos.y - mypoint.y)*7.68*7.68/6.016/6.016) < 0.0001)       \n"
             "    {                                                                                     \n"
             "        FragColor = vec4(pcolor, 1.0f);                                                  \n"
             "    }                                                                                     \n"
@@ -1198,4 +1198,53 @@ public:
     {
         xx = target;
     }
+};
+class UnionFind
+{
+public:
+    UnionFind(int n)
+    {
+        parent.resize(n);
+        rank.resize(n, 0);
+        for (int i = 0; i < n; ++i)
+        {
+            parent[i] = i;
+        }
+    }
+
+    int find(int x)
+    {
+        if (parent[x] != x)
+        {
+            parent[x] = find(parent[x]);
+        }
+        return parent[x];
+    }
+
+    void unite(int x, int y)
+    {
+        int px = find(x);
+        int py = find(y);
+        if (px == py)
+        {
+            return;
+        }
+        if (rank[px] < rank[py])
+        {
+            parent[px] = py;
+        }
+        else if (rank[px] > rank[py])
+        {
+            parent[py] = px;
+        }
+        else
+        {
+            parent[py] = px;
+            rank[px] += 1;
+        }
+    }
+
+private:
+    std::vector<int> parent;
+    std::vector<int> rank;
 };

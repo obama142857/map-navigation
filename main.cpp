@@ -56,6 +56,7 @@ float pitch = 0.0f;
 float lastX = 800.0f / 2.0;
 float lastY = 600.0 / 2.0;
 
+int modd;//绘制模式
 bool addallow = true;
 bool guifocus;
 string suibian;
@@ -102,6 +103,8 @@ static bool open = false;
 vector<float> vertices;
 unsigned int VAO, VBO;
 bool hasVAO;
+bool startready;
+bool desready;
 int stringtoint(string a)
 {
 	stringstream ss;
@@ -685,9 +688,6 @@ void bfs()
 #pragma endregion
 
 
-
-
-
 float testvertices[]
 {
 0.5,0.5,
@@ -697,6 +697,7 @@ float testvertices[]
 -0.5,0.8,
 
 };
+
 
 
 void showans()
@@ -822,8 +823,104 @@ void savehisdata()
 	}
 	f1.close();
 }
+
+class edge
+{
+public:
+	edge(int st, int ed, double d)
+	{
+		start = st;
+		end = ed;
+		dis = d;
+	}
+	int start;
+	int end;
+	double dis;
+
+	bool operator<(const edge& other) const
+	{
+		return dis > other.dis;
+	}
+};
+
+struct point
+{
+	point(double xx, double yy, int ii)
+	{
+		x = xx;
+		y = yy;
+		index = ii;
+	}
+	double x;
+	double y;
+	int index;
+};
+
+class minGtree
+{
+public:
+	int N;
+	vector<point> p;
+	priority_queue<edge> q;
+	vector<edge> ans;
+	minGtree()
+	{
+		N = 0;
+		p.clear();
+	}
+	void add(double x, double y, int i)
+	{
+		p.push_back(point(x, y, i));
+		N++;
+	}
+	double getdis(int i, int j)
+	{
+		double x = (p[i].x - p[j].x) * (p[i].x - p[j].x);
+		double y = (p[i].y - p[j].y) * (p[i].y - p[j].y);
+		return sqrt(x + y);
+	}
+	void gen()
+    {
+        for (int i = 0; i < N; i++)
+        {
+            for (int j = i + 1; j < N && i != j; j++)
+            {
+                q.push(edge(i, j, getdis(i, j)));
+            }
+        }
+        UnionFind f(100);
+        int n = 0;
+        while (n < N - 1)
+        {
+            edge temp = q.top();
+            q.pop();
+            if (f.find(temp.start) != f.find(temp.end))
+            {
+                ans.push_back(temp);
+				f.unite(temp.start, temp.end);
+				n++;
+            }
+           
+        }
+    }
+	void output()
+	{
+		for (int i = 0; i < ans.size(); i++)
+		{
+			vertices.push_back(anchors[p[ans[i].start].index].x);
+			vertices.push_back(anchors[p[ans[i].start].index].y);
+			vertices.push_back(anchors[p[ans[i].end].index].x);
+			vertices.push_back(anchors[p[ans[i].end].index].y);
+		}
+	}
+};
+bool disflag;
+glm::vec2 mypos1, mypos2;
+
+
 int main()
 {
+	
 	createwindow pwindow(1600, 900, "Hitwh TSP Navigator");
 	ShowWindow(GetConsoleWindow(), SW_HIDE);
 	//加载IMGUI
@@ -831,15 +928,13 @@ int main()
 	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO(); (void)io;
 	ImGui::StyleColorsDark();
-	io.Fonts->AddFontFromFileTTF("Dengb.ttf", 13.0f, NULL, io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
+	io.Fonts->AddFontFromFileTTF("Dengb.ttf", 20.0f, NULL, io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
 	ImGui_ImplGlfw_InitForOpenGL(pwindow.value(), true);
 	ImGui_ImplOpenGL3_Init("#version 130");
 	ImGui::StyleColorsLight();
 	ImGuiStyle& style = ImGui::GetStyle();
 	style.WindowRounding = style.ChildRounding = style.FrameRounding = style.PopupRounding = style.ScrollbarRounding = style.GrabRounding = style.LogSliderDeadzone = style.TabRounding = 12.0f;
-
-	//加载背景着色器
-	Shader backgroundshader("myfile/background.vs", "myfile/background.fs");
+	style.Alpha = 0.9;
 	//加载文字并设置
 	Shader textshader("myfile/text.vs", "myfile/text.fs");//文本着色器
 	glm::mat4 projectiontext = glm::ortho(0.0f, pwindow.x(), 0.0f, pwindow.y());
@@ -852,14 +947,17 @@ int main()
 	Shader onetexture3d("myfile/onetexture.vs", "myfile/onetexture.fs");
 	Shader anchorshader("myfile/anchor.vs", "myfile/anchor.fs");
 	Shader lineshader("myfile/line.vs", "myfile/line.fs", "myfile/line.gs");
-
+	Shader treeshader("myfile/edge.vs", "myfile/edge.fs", "myfile/edge.gs");
+	Shader trishader("myfile/triangle.vs", "myfile/triangle.fs");
+	Shader disline("myfile/disline.vs", "myfile/disline.fs", "myfile/disline.gs");
 	onetexture3d.use();
 	onetexture3d.setInt("texture1", 0);
 	onetexture3d.setInt("texture2", 1);
 	//按钮
 	button back(pwindow, "BACK", 0.5, 1452, 10, 1585, 56, glm::vec3(0, 0.4, 0.8), glm::vec3(0.3, 0.9, 0.3));
-	button start(pwindow, "START", 1.0, 640, 500 - 175, 961, 576 - 175, glm::vec3(0.6, 1, 0.6), glm::vec3(0, 0.6, 0.8));
+	button start(pwindow, "START", 1.0, 640, 500 - 175-30, 961, 576 - 175-30, glm::vec3(0.6, 1, 0.6), glm::vec3(0, 0.6, 0.8));
 	button navigate(pwindow, "Navigate", 0.5, 1200, 10, 1400, 56, glm::vec3(0.6, 1, 0.6), glm::vec3(0.2, 0.8, 1));
+	
 	//锚点
 	anchor testanchor(pwindow, "test", 50, 1200, 450, glm::vec3(0, 204.0 / 255, 1.0), glm::vec3(0, 0.4, 0.8));
 	char testtext[100];
@@ -934,6 +1032,13 @@ int main()
 	}
 	f2.close();
 	N = count;
+
+	float myver[] = {
+		-0.10f, 0.30f,0.0f, // left  
+		 0.10f, 0.30f,0.0f,  // right 
+		 0.0f,  0.0f,0.0  // top   
+	};
+	basicdraw tri1(myver, sizeof(myver));
 
 	//menu=1
 	float mapshowerv[] = {
@@ -1034,7 +1139,8 @@ int main()
 				mytime2 = 0;
 				menu = 1;
 			}
-
+			sprintf_s(testtext, "Hitwh Multiple Des Navigator");
+			Text.RenderText(textshader, testtext, 185,550, 1.0f, glm::vec3(0.4,1,1));
 			if (test)
 			{
 				sprintf_s(testtext, "(%.2f,%.2f),pos:(%.2f,%.2f,%.2f),Front:(%.2f,%.2f,%.2f),Up:(%.2f,%.2f,%.2f),", pwindow.mousex(), 900 - pwindow.mousey(), cameraPos.x, cameraPos.y, cameraPos.z, cameraFront.x, cameraFront.y, cameraFront.z, cameraUp.x, cameraUp.y, cameraUp.z);
@@ -1068,46 +1174,51 @@ int main()
 
 			if (!showmove)
 			{
-				if (right - left < 2)
+				if (glfwGetMouseButton(pwindow.value(), GLFW_MOUSE_BUTTON_1) == GLFW_RELEASE)
 				{
-					if (fabs(transvec.x) < 0.001)
-						mytime = 0;
-					transvec.x = transvec.x - transvec.x * (1 - pow(1.01, -mytime / 100.0));
+					if (right - left < 2)
+					{
+						if (fabs(transvec.x) < 0.001)
+							mytime = 0;
+						transvec.x = transvec.x - transvec.x * (1 - pow(1.02, -mytime / 100.0));
+					}
+					else
+					{
+						if (left > -1.0f)
+						{
+							transvec.x = transvec.x - (left + 1.0f) * (1 - pow(1.02, -mytime / 100.0));
+						}
+
+						else if (right < 1.0f)
+						{
+
+							transvec.x = transvec.x + (1.0f - right) * (1 - pow(1.02, -mytime / 100.0));
+						}
+						if (left < -0.999 && right>0.999)
+							mytime = 0;
+
+					}
+					if (up - down > 2)
+					{
+						if (up < 1.0)
+							transvec.y = transvec.y + (1.0 - up) * (1 - pow(1.02, -mytime2 / 100.0));
+						if (down > -1.0)
+							transvec.y = transvec.y - (down + 1.0) * (1 - pow(1.02, -mytime2 / 100.0));
+						if (up > 0.999 && down < -0.999)
+							mytime2 = 0;
+
+					}
+					else
+					{
+						if (fabs(transvec.y) < 0.001)
+							mytime2 = 0;
+
+						transvec.y = transvec.y - transvec.y * (1 - pow(1.02, -mytime2 / 100.0));
+
+					}
 				}
 				else
-				{
-					if (left > -1.0f)
-					{
-						transvec.x = transvec.x - (left + 1.0f) * (1 - pow(1.01, -mytime / 100.0));
-					}
-
-					else if (right < 1.0f)
-					{
-
-						transvec.x = transvec.x + (1.0f - right) * (1 - pow(1.01, -mytime / 100.0));
-					}
-					if (left < -0.999 && right>0.999)
-						mytime = 0;
-
-				}
-				if (up - down > 2)
-				{
-					if (up < 1.0)
-						transvec.y = transvec.y + (1.0 - up) * (1 - pow(1.01, -mytime2 / 100.0));
-					if (down > -1.0)
-						transvec.y = transvec.y - (down + 1.0) * (1 - pow(1.01, -mytime2 / 100.0));
-					if (up > 0.999 && down < -0.999)
-						mytime2 = 0;
-
-				}
-				else
-				{
-					if (fabs(transvec.y) < 0.001)
-						mytime2 = 0;
-
-					transvec.y = transvec.y - transvec.y * (1 - pow(1.01, -mytime2 / 100.0));
-
-				}
+					mytime = mytime2 = 0;
 			}
 
 			if (showmove)
@@ -1131,7 +1242,8 @@ int main()
 				ballxtex.renderframe((temp.x-0.5)*2, (temp.y-0.5)*2);
 			}
 
-
+			
+			
 			onetexture3d.use();
 			glActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_2D, mappicture.id);
@@ -1140,21 +1252,77 @@ int main()
 			onetexture3d.setMat4("model", model);
 			glBindVertexArray(mapVAO);
 			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+			if (disflag)
+			{
+				
+				
+				double x1 = getScreenPos(mypos1.x, mypos1.y).x;
+				double y1 = getScreenPos(mypos1.x, mypos1.y).y;
+				double x2 = getScreenPos(mypos2.x, mypos2.y).x;
+				double y2 = getScreenPos(mypos2.x, mypos2.y).y;
+				
+				
+
+				
+
+				disline.use();
+				disline.setVec2("mypos1", glm::vec2(x1,y1));
+				disline.setVec2("mypos2", glm::vec2(x2, y2));
+				glBindVertexArray(tri1.VAO);
+				glDrawArrays(GL_LINES, 0,2);
+				sprintf_s(testtext, "%lf", sqrt(glm::length(mypos1 - mypos2)) * 100.0);
+				Text.RenderText(textshader, testtext, (x1 + x2) / 2 * 800 + 800, (y1 + y2) / 2 * 450 + 450, 1.5f * scalef, glm::vec3(0.9,0.3,0.9));
+
+				trishader.use();
+				glm::mat4 model2, model3;
+				model2 = glm::translate(model2, glm::vec3(x1, y1, 0));
+				model2 = glm::scale(model2, glm::vec3(scalef, scalef, scalef));
+				model3 = glm::translate(model3, glm::vec3(x2, y2, 0));
+				model3 = glm::scale(model3, glm::vec3(scalef, scalef, scalef));
+				trishader.setMat4("model", model2);
+				trishader.setVec3("mycolor", glm::vec3(1, 51.0 / 255, 0));
+				tri1.draw(trishader.id());
+				trishader.setMat4("model", model3);
+				trishader.setVec3("mycolor", glm::vec3(0, 204.0 / 255, 1));
+				tri1.draw(trishader.id());
+			}
+			if (glfwGetMouseButton(pwindow.value(), GLFW_MOUSE_BUTTON_2) == GLFW_PRESS)
+			{
+				float a = pwindow.mousex();
+				float b = 900 - pwindow.mousey();
+				glm::vec2 temp = getPicPos((a - 800) / 800, (b - 450) / 450);
+				ballxtex.renderframe((temp.x - 0.5) * 2, (temp.y - 0.5) * 2);
+			}
 			if (hasVAO)
 			{
+				if (modd == 1)
+				{
+					glEnable(GL_BLEND);
+					glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+					float timeValue = glfwGetTime() - starttime;
+					timeValue = timeValue / vertices.size() * 5;
+					timeValue = timeValue - (int)timeValue;
+					lineshader.use();
+					lineshader.setFloat("time1", timeValue);
+					lineshader.setMat4("model", model);
+					lineshader.setFloat("sc", scalef);
+					lineshader.setInt("mysum", vertices.size() / 2);
+					glBindVertexArray(VAO);
+					glDrawArrays(GL_LINE_STRIP, 0, vertices.size() / 2);
+				}
 
-				glEnable(GL_BLEND);
-				glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-				float timeValue = glfwGetTime()-starttime;
-				timeValue = timeValue / vertices.size() * 5;
-				timeValue = timeValue - (int)timeValue;
-				lineshader.use();
-				lineshader.setFloat("time1", timeValue);
-				lineshader.setMat4("model", model);
-				lineshader.setFloat("sc", scalef);
-				lineshader.setInt("mysum", vertices.size() / 2);
-				glBindVertexArray(VAO);
-				glDrawArrays(GL_LINE_STRIP, 0, vertices.size() / 2);
+				if (modd == 2)
+				{
+					glEnable(GL_BLEND);
+					glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+					
+					
+					treeshader.use();
+					treeshader.setMat4("model", model);
+					glBindVertexArray(VAO);
+					glDrawArrays(GL_LINES, 0, vertices.size() / 2);
+				}
+
 			}
 
 			for (anp = anchors.begin(); anp != anchors.end(); anp++)
@@ -1167,15 +1335,20 @@ int main()
 			ImGui_ImplGlfw_NewFrame();
 			ImGui::NewFrame();
 
-
+			io.FontGlobalScale = 1.0f;
+			
 			if (open)
 			{
 				ImGui::Begin(u8"导航设置", &open, ImGuiWindowFlags_AlwaysAutoResize);
 
-
-				ImGui::Text(u8"设置起点S");
+				if (startready)
+				{
+					ImGui::Text(u8"设置完毕");
+				}
+				else
+					ImGui::Text(u8"请设置起点");
 				ImGui::SameLine();
-				if (ImGui::Button(u8"设为起点"))
+				if (ImGui::Button(u8"设置起点"))
 				{
 					cout << "开始设置起点:" << endl;
 
@@ -1184,10 +1357,15 @@ int main()
 						if (anp->selected && anp->selectalbe)
 						{
 							startpoint = anp->index;
+							startready = true;
 						}
 					}
-					anchors[startpoint].bcolor = glm::vec3(1, 0.1, 0.1);
-					cout << "起点为:" << startpoint << endl;
+					if (startready)
+					{
+						anchors[startpoint].bcolor = glm::vec3(1, 0.1, 0.1);
+						cout << "起点为:" << startpoint << endl;
+					}
+					
 					for (anp = anchors.begin(); anp != anchors.end(); anp++)
 					{
 						anp->selected = false;
@@ -1196,10 +1374,14 @@ int main()
 				}
 				ImGui::SameLine();
 				HelpMarker(u8"将当前选中的点设为起点");
-
-				ImGui::Text(u8"设置目的地");
+				if (desready)
+				{
+					ImGui::Text(u8"设置完毕");
+				}
+				else
+				ImGui::Text(u8"请设置目的地");
 				ImGui::SameLine();
-				if (ImGui::Button(u8"设为目的地"))
+				if (ImGui::Button(u8"设置目的地"))
 				{
 					cout << "开始设置目的地" << endl;
 
@@ -1209,18 +1391,74 @@ int main()
 						{
 							despoint.push_back(anp->index);
 							anp->bcolor = glm::vec3(0.8, 0.8, 0.0);
+							desready = true;
 						}
 
+					}
+					if (desready)
+					{
+						cout << "目的地设置完毕" << endl;
 					}
 					for (anp = anchors.begin(); anp != anchors.end(); anp++)
 					{
 						anp->selected = false;
 					}
-					cout << "目的地设置完毕" << endl;
-
 				}
 				ImGui::SameLine();
 				HelpMarker(u8"将当前选中的点设为目的地");
+				ImGui::Text(u8"铺设地下管道:");
+				ImGui::SameLine();
+				static bool errorwindow;
+				if (ImGui::Button(u8"最小生成树"))
+				{
+					if (hasVAO)
+					{
+						hasVAO = false;
+						vertices.clear();
+						glDeleteVertexArrays(1, &VAO);
+						glDeleteBuffers(1, &VBO);
+					}
+					
+
+
+					modd = 2;
+					minGtree t;
+					for (anp = anchors.begin(); anp != anchors.end(); anp++)
+					{
+						if (anp->selected && anp->selectalbe)
+						{
+							t.add(anp->x, anp->y, anp->index);
+						}
+					}
+					if (t.N <= 1)
+					{
+						errorwindow = true;
+					}
+					else
+					{
+						t.gen();
+						t.output();
+						showans();
+					}
+					
+				}
+				if (errorwindow)
+				{
+					ImGui::OpenPopup(u8"注意");
+
+					ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+					ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+
+					if (ImGui::BeginPopupModal(u8"注意", NULL, ImGuiWindowFlags_AlwaysAutoResize))
+					{
+						ImGui::Text(u8"请选择至少两个点!");
+
+						ImGui::Separator();
+						if (ImGui::Button(u8"确定", ImVec2(320, 0))) { errorwindow = false; ImGui::CloseCurrentPopup(); }
+
+						ImGui::EndPopup();
+					}
+				}
 				static char buf[32] = "";
 				ImGui::InputText(u8"输入名字", buf, IM_ARRAYSIZE(buf));
 				ImGui::SameLine();
@@ -1280,63 +1518,78 @@ int main()
 						G.xlist[i].firstout = NULL;
 						G.xlist[i].firstin = NULL;
 					}
+					startready = false;
+					desready = false;
 					//cout << "清空完毕" << endl;
 				}
 				ImGui::SameLine();
 				static int item_current_idx = 0; // Here we store our selection data as an index.
-				if (ImGui::Button(u8"开始规划"))
-				{
-					hcount = 0;
-					suibian = "";
-					string hname = ttostring((int)items.size()+1);
-					historyitem temp;
-					temp.name = hname;
-
-					hname += ":";
-					int nn = despoint.size();
-					hname += ttostring(nn + 1) + "+"+ttostring(startpoint) + "+";
-					for (int i = 0; i < despoint.size(); i++)
-					{
-						
-						hname += ttostring(despoint[i]);
-						hname += "+";
-					}
-
-
-					Floyd f(N, startpoint, despoint);
-					creatG(f);
-					getup(); // 求上界
-
-					node start;
-					start.add(0, 0);
-					q.push(start);
-					bfs();
-
-					int pre = ans_node.path[0];
-					for (int i = 1; i <= G.vexnum; i++)
-					{
-						int a = ans_node.path[i];
-						f.getpath(G.xlist[pre].data, G.xlist[a].data);
-						pre = a;
-					}
-					cout << f.start << endl;
-					suibian += ttostring(f.start) + "+";
-					hcount++;
-					vertices.push_back(anchors[f.start].x);
-					vertices.push_back(anchors[f.start].y);
-					
-					showans();
-					hname += ttostring(hcount) + "+" + suibian + "+";
-					temp.idata = hname;
-					items.push_back(temp);
-					item_current_idx = items.size() - 1;
-					cout << ans_node.sumv << endl;
-				}
-				ImGui::SameLine();
+				
+				
 				if (ImGui::Button(u8"删除涂鸦"))
 				{
 					ballxtex.clear();
 				}
+				if (startready && desready)
+				{
+					ImGui::SameLine();
+					
+					if (ImGui::Button(u8"开始规划"))
+					{
+						hcount = 0;
+						suibian = "";
+						string hname = ttostring((int)items.size() + 1);
+						historyitem temp;
+						temp.name = hname;
+
+						hname += ":";
+						int nn = despoint.size();
+						hname += ttostring(nn + 1) + "+" + ttostring(startpoint) + "+";
+						for (int i = 0; i < despoint.size(); i++)
+						{
+
+							hname += ttostring(despoint[i]);
+							hname += "+";
+						}
+
+
+						Floyd f(N, startpoint, despoint);
+						creatG(f);
+						getup(); // 求上界
+
+						node start;
+						start.add(0, 0);
+						q.push(start);
+						bfs();
+
+						int pre = ans_node.path[0];
+						for (int i = 1; i <= G.vexnum; i++)
+						{
+							int a = ans_node.path[i];
+							f.getpath(G.xlist[pre].data, G.xlist[a].data);
+							pre = a;
+						}
+						cout << f.start << endl;
+						suibian += ttostring(f.start) + "+";
+						hcount++;
+						vertices.push_back(anchors[f.start].x);
+						vertices.push_back(anchors[f.start].y);
+						modd=1;
+						showans();
+						hname += ttostring(hcount) + "+" + suibian + "+";
+						temp.idata = hname;
+						items.push_back(temp);
+						item_current_idx = items.size() - 1;
+						cout << ans_node.sumv << endl;
+						startready = false;
+						desready = false;
+
+					}
+				}
+				ImGui::SameLine();
+				ImGui::Checkbox(u8"距离测量", &disflag);
+				ImGui::SameLine();
+				HelpMarker(u8"按Z和X设置标点");
 				bool testf=false;
 				ImGui::Separator();
 				if (ImGui::BeginListBox(u8"历史记录"))
@@ -1354,6 +1607,7 @@ int main()
 				}
 				if (ImGui::Button(u8"绘制"))
 				{
+					modd = 1;
 					for (anp = anchors.begin(); anp != anchors.end(); anp++)
 					{
 						anp->selected = false;
@@ -1368,7 +1622,7 @@ int main()
 				ImGui::SameLine();
 				if (ImGui::Button(u8"删除"))
 				{
-					if (items.size() > 0)
+					if (items.size()>0&& item_current_idx>=0&& item_current_idx<items.size())
 					{
 						vector<historyitem>::iterator p;
 						p = items.begin();
@@ -1381,13 +1635,26 @@ int main()
 
 					
 				}
-				guifocus = ImGui::IsWindowHovered() || ImGui::IsAnyItemHovered();
+				if (!open)
+				{
+					
+					guifocus = false;
+				}
+					
+				else
+					guifocus = ImGui::IsWindowHovered() || ImGui::IsAnyItemHovered();
 
 				ImGui::End();
 				ImGui::Render();
 				ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 			}
-
+			if (glfwGetMouseButton(pwindow.value(), GLFW_MOUSE_BUTTON_2) == GLFW_PRESS)
+			{
+				float a = pwindow.mousex();
+				float b = 900 - pwindow.mousey();
+				glm::vec2 temp = getPicPos((a - 800) / 800, (b - 450) / 450);
+				ballxtex.renderframe((temp.x - 0.5) * 2, (temp.y - 0.5) * 2);
+			}
 			//Back按钮的绘制----------------------------------------
 			navigate.render(textshader, buttonshader);
 			if (navigate.click())
@@ -1401,14 +1668,22 @@ int main()
 				Text.RenderText(textshader, testtext, 2.0f, 2.0f, 0.25f, glm::vec3(0.0f, 0.0f, 102 / 255.0));
 			}
 			savehisdata();
+			if (disflag&&glfwGetKey(pwindow.value(), GLFW_KEY_Z) == GLFW_PRESS)
+			{
+				double mx = pwindow.mousex();
+				double my = 900-pwindow.mousey();
+				mypos1 = getPicPos((mx-800)/800,(my-450)/450);
+			}
+			if (disflag && glfwGetKey(pwindow.value(), GLFW_KEY_X) == GLFW_PRESS)
+			{
+				double mx = pwindow.mousex();
+				double my = 900 - pwindow.mousey();
+				mypos2 = getPicPos((mx - 800) / 800, (my - 450) / 450);
+			}
 			glfwSwapBuffers(pwindow.value());
 			glfwPollEvents();
-
 		}
-
-
 	}
-
 	return 0;
 }
 
@@ -1436,7 +1711,7 @@ void processInput(GLFWwindow* window, createwindow mywindow)
 		if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
 			scalef += 0.5 * cameraSpeed * scalef;
 	}
-
+	
 	if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1) == GLFW_PRESS)
 	{
 		mapmove = true;
