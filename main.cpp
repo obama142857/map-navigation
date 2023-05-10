@@ -1368,13 +1368,18 @@ int main()
 				ImGui::SameLine();
 				if (ImGui::Button(u8"É¾³ý"))
 				{
-					vector<historyitem>::iterator p;
-					p = items.begin();
-					for (int i = 0; i < item_current_idx; i++)
+					if (items.size() > 0)
 					{
-						p++;
+						vector<historyitem>::iterator p;
+						p = items.begin();
+						for (int i = 0; i < item_current_idx; i++)
+						{
+							p++;
+						}
+						items.erase(p);
 					}
-					items.erase(p);
+
+					
 				}
 				guifocus = ImGui::IsWindowHovered() || ImGui::IsAnyItemHovered();
 
